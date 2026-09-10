@@ -116,6 +116,7 @@ class ParcelDetail(OrmBase):
     state:       Optional[str] = None
     address:     Optional[str] = None
     has_conflict: bool = False
+    geometry:    Optional[dict] = None
 
 
 class OwnershipResponse(BaseModel):

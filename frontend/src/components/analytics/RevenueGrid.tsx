@@ -10,11 +10,11 @@ function Skeleton({ height = 14, width = "100%" }: { height?: number; width?: st
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Property Tax":       "#00C896",
-  "Water Charges":      "#3B82F6",
-  "Electricity":        "#F59E0B",
-  "Sewer/SWM":         "#8B5CF6",
-  "Garbage Collection": "#EF4444",
+  "Property Tax":       "#0284C7", // var(--accent)
+  "Water Charges":      "#0ea5e9", // var(--accent-blue)
+  "Electricity":        "#D97706", // var(--amber)
+  "Sewer/SWM":         "#6366f1",
+  "Garbage Collection": "#DC2626", // var(--red)
 };
 
 function fmt(n: number) {
@@ -24,7 +24,7 @@ function fmt(n: number) {
   return `₹${n.toFixed(0)}`;
 }
 
-function MetricRow({ metric, onViewDefaulters }: { metric: RevenueMetric; onViewDefaulters: () => void }) {
+function MetricRow({ metric, onViewDefaulters }: { metric: RevenueMetric; onViewDefaulters: (category: string) => void }) {
   const color = CATEGORY_COLORS[metric.category] ?? "#4A5568";
   const pct = Math.min(100, metric.collection_pct);
 
@@ -74,7 +74,7 @@ function MetricRow({ metric, onViewDefaulters }: { metric: RevenueMetric; onView
 
         {metric.defaulter_count > 0 && (
           <button
-            onClick={onViewDefaulters}
+            onClick={() => onViewDefaulters(metric.category)}
             style={{
               display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600,
               color: "var(--red)", background: "var(--red-dim)",
@@ -92,10 +92,20 @@ function MetricRow({ metric, onViewDefaulters }: { metric: RevenueMetric; onView
 
 export default function RevenueGrid() {
   const { data, isLoading } = useSWR<RevenueResponse>("/api/analytics/revenue", fetcher);
-  const { activeLayers, toggleLayer } = useMapStore();
+  const { activeLayers, toggleLayer, setDefaulterMarkers } = useMapStore();
 
-  const viewDefaulters = () => {
-    if (!activeLayers.taxDefaulters) toggleLayer("taxDefaulters");
+  const viewDefaulters = async (category: string) => {
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_BASE}/api/analytics/defaulters?category=${encodeURIComponent(category)}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const markers = await res.json();
+      setDefaulterMarkers(markers);
+      if (!activeLayers.taxDefaulters) toggleLayer("taxDefaulters");
+    } catch (e) {
+      // fallback: just enable the layer
+      if (!activeLayers.taxDefaulters) toggleLayer("taxDefaulters");
+    }
     window.location.href = "/";  // Navigate to map view
   };
 
@@ -104,7 +114,7 @@ export default function RevenueGrid() {
       {/* Summary banner */}
       {!isLoading && data && (
         <div style={{
-          background: "linear-gradient(135deg, rgba(0,200,150,0.1) 0%, rgba(37,99,235,0.1) 100%)",
+          background: "linear-gradient(135deg, var(--accent-dim) 0%, var(--accent-blue-dim) 100%)",
           border: "1px solid var(--border-accent)", borderRadius: 12, padding: "16px 20px",
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
