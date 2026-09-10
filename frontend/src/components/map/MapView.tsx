@@ -96,7 +96,9 @@ export default function MapView() {
       map.addLayer({
         id: "parcels-fill",
         type: "fill",
+
         "source-layer": "parcels_tile_view",
+
         source: "parcels",
         paint: {
           "fill-color": [
@@ -115,7 +117,9 @@ export default function MapView() {
       map.addLayer({
         id: "parcels-line",
         type: "line",
+
         "source-layer": "parcels_tile_view",
+
         source: "parcels",
         paint: {
           "line-color": "#333",
@@ -457,7 +461,9 @@ export default function MapView() {
     if (activeULPIN && mapRef.current) {
       const map = mapRef.current;
       const features = map.querySourceFeatures("parcels", {
+
         sourceLayer: "parcels_tile_view",
+
         filter: ["==", "ulpin", activeULPIN]
       });
 
