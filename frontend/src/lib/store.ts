@@ -22,6 +22,13 @@ export interface DrawResult {
   defaulter_count: number;
 }
 
+export interface DefaulterMarker {
+  ulpin: string;
+  coordinates: [number, number];
+  owner_name?: string;
+  amount_due?: number;
+}
+
 interface MapStore {
   // Active parcel
   activeULPIN: string | null;
@@ -38,6 +45,12 @@ interface MapStore {
   // Conflict alerts (fetched from API on load)
   alerts: ConflictAlert[];
   setAlerts: (alerts: ConflictAlert[]) => void;
+
+  // Defaulter markers
+  defaulterMarkers: DefaulterMarker[];
+  setDefaulterMarkers: (markers: DefaulterMarker[]) => void;
+  addDefaulterMarker: (marker: DefaulterMarker) => void;
+  clearDefaulterMarkers: () => void;
 
   // Draw mode
   drawActive: boolean;
@@ -78,6 +91,12 @@ export const useMapStore = create<MapStore>((set) => ({
 
   alerts: [],
   setAlerts: (alerts) => set({ alerts }),
+
+  defaulterMarkers: [],
+  setDefaulterMarkers: (markers) => set({ defaulterMarkers: markers }),
+  addDefaulterMarker: (marker) =>
+    set((state) => ({ defaulterMarkers: [...state.defaulterMarkers, marker] })),
+  clearDefaulterMarkers: () => set({ defaulterMarkers: [] }),
 
   drawActive: false,
   setDrawActive: (active) => set({ drawActive: active }),
