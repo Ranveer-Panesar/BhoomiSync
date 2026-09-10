@@ -128,3 +128,46 @@ async def revenue_metrics(
         total_collected=total_paid,
         overall_pct=overall_pct,
     )
+
+
+@router.get("/analytics/defaulters")
+async def get_defaulters(
+    fy: str = CURRENT_FY,
+    category: str = "Property Tax",
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return all tax-defaulter parcels with centroid coordinates for map pins.
+    Uses ST_Centroid so the pin lands inside the building, not at a corner vertex.
+    """
+    sql = text("""
+        SELECT
+            p.ulpin,
+            p.plot_number,
+            p.address,
+            o.owner_name,
+            t.arrears,
+            t.amount_due - t.amount_paid AS pending,
+            ST_X(ST_Centroid(p.geometry)) AS lng,
+            ST_Y(ST_Centroid(p.geometry)) AS lat
+        FROM parcels p
+        JOIN tax_records t ON t.parcel_id = p.id
+        LEFT JOIN owners o ON o.parcel_id = p.id AND o.valid_to IS NULL
+        WHERE
+            t.financial_year = :fy
+            AND t.status = 'Defaulter'
+        ORDER BY t.arrears DESC
+        LIMIT 200
+    """)
+    rows = await db.execute(sql, {"fy": fy})
+    result = []
+    for r in rows.mappings():
+        result.append({
+            "ulpin": r["ulpin"],
+            "plot_number": r["plot_number"],
+            "address": r["address"],
+            "owner_name": r["owner_name"],
+            "amount_due": float(r["pending"] or 0),
+            "coordinates": [float(r["lng"]), float(r["lat"])],
+        })
+    return result

@@ -114,29 +114,21 @@ export default function Topbar() {
     }
   };
 
-  // View all defaulters - fetch from API and drop pins
+  // View all defaulters - fetch from analytics API and drop centroid pins
   const handleViewDefaulters = async () => {
     setLoadingDefaulters(true);
     try {
-      // Fetch all defaulters from the API
-      const res = await fetch(`${TILESERV_URL}/public.parcels_tile_view/mvt/0/0/0.pbf`);
-      
-      // For now, use mock data based on alerts
-      const defaulterList: DefaulterMarker[] = activeAlerts
-        .filter(a => a.ulpin)
-        .map((alert, idx) => ({
-          ulpin: alert.ulpin!,
-          coordinates: [77.5946 + (Math.random() - 0.5) * 0.02, 12.9716 + (Math.random() - 0.5) * 0.015] as [number, number],
-          owner_name: alert.description.split(':')[0],
-          amount_due: Math.random() * 50000 + 10000,
-        }));
-      
-      setDefaulterMarkers(defaulterList);
-      
+      const res = await fetch(`${API_BASE}/api/analytics/defaulters`);
+      if (!res.ok) throw new Error("Failed to fetch defaulters");
+      const data: DefaulterMarker[] = await res.json();
+
+      setDefaulterMarkers(data);
+
       // Enable the tax defaulters layer
       if (!activeLayers.taxDefaulters) {
         toggleLayer('taxDefaulters');
       }
+      setAlertOpen(false);
     } catch (err) {
       console.error("Failed to fetch defaulters:", err);
     } finally {
@@ -254,7 +246,8 @@ export default function Topbar() {
               <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>No active alerts</div>
             ) : (
               <>
-                {activeAlerts.slice(0, 5).map((a) => (
+                <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                {activeAlerts.map((a) => (
                   <div
                     key={a.id}
                     onClick={() => handleDefaulterClick(a.ulpin || "")}
@@ -276,6 +269,7 @@ export default function Topbar() {
                     </div>
                   </div>
                 ))}
+                </div>
                 <div
                   onClick={handleViewDefaulters}
                   style={{

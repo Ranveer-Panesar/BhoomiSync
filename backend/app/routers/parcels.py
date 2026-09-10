@@ -42,10 +42,16 @@ router = APIRouter()
 @router.get("/parcels/{ulpin}", response_model=ParcelDetail)
 async def get_parcel(ulpin: str, db: AsyncSession = Depends(get_db)):
     """Get core parcel metadata by ULPIN."""
-    result = await db.execute(select(Parcel).where(Parcel.ulpin == ulpin))
-    parcel = result.scalar_one_or_none()
-    if not parcel:
+    result = await db.execute(
+        select(Parcel, func.ST_AsGeoJSON(func.ST_Centroid(Parcel.geometry)).label("centroid"))
+        .where(Parcel.ulpin == ulpin)
+    )
+    row = result.first()
+    if not row:
         raise HTTPException(status_code=404, detail=f"Parcel with ULPIN {ulpin} not found")
+
+    parcel = row[0]
+    centroid_str = row[1]
 
     # Check for active conflicts
     conflict_result = await db.execute(
@@ -65,6 +71,7 @@ async def get_parcel(ulpin: str, db: AsyncSession = Depends(get_db)):
         state=parcel.state,
         address=parcel.address,
         has_conflict=has_conflict,
+        geometry=json.loads(centroid_str) if centroid_str else None,
     )
 
 

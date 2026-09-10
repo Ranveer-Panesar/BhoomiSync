@@ -34,10 +34,13 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
   },
   layers: [
     {
-      id: "osm-bg",
+      id: "basemap",
       type: "raster",
       source: "osm",
-      paint: { "raster-opacity": 0.95 }
+      paint: { 
+        "raster-opacity": 0.8,
+        "raster-saturation": -0.8
+      }
     }
   ]
 };
@@ -66,24 +69,6 @@ export default function MapView() {
     map.on('load', () => {
       setDebugLog("Map style loaded, adding layers...");
 
-      // ── TEST LAYER: Whole city of Bengaluru
-      map.addSource('bengaluru-test', {
-        type: 'geojson',
-        data: {
-          type: "FeatureCollection",
-          features: [{
-            type: "Feature",
-            geometry: { type: "Polygon", coordinates: [[[77.4, 12.8], [77.7, 12.8], [77.7, 13.1], [77.4, 13.1], [77.4, 12.8]]] },
-            properties: {}
-          }]
-        }
-      });
-      map.addLayer({
-        id: "bengaluru-test-fill",
-        type: "fill",
-        source: "bengaluru-test",
-        paint: { "fill-color": "#2563EB", "fill-opacity": 0.4 }
-      });
 
       // ── Parcel tiles from pg_tileserv
       map.addSource('parcels', {
@@ -189,11 +174,10 @@ export default function MapView() {
     const [cx, cy] = BENGALURU_CENTER;
 
     const syncLayer = (sourceId: string, active: boolean, sourceDef: any, layerDefs: any[]) => {
-      // if (!map.getStyle() || !map.isStyleLoaded()) return;
       if (active) {
         if (!map.getSource(sourceId)) map.addSource(sourceId, sourceDef);
         for (const layer of layerDefs) {
-          if (!map.getLayer(layer.id)) map.addLayer(layer);
+          if (!map.getLayer(layer.id)) map.addLayer({ ...layer, source: sourceId });
         }
       } else {
         for (const layer of layerDefs) {
@@ -204,30 +188,43 @@ export default function MapView() {
     };
 
     const runSync = () => {
-      // ── Water Lines
+      // ── Water Lines — approximate BBMP water main corridors across Bengaluru
       syncLayer('water-lines', !!activeLayers.waterLines, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
           features: [
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[cx - 0.004, cy - 0.003], [cx + 0.001, cy - 0.0015], [cx + 0.0045, cy + 0.002]] }, properties: {} },
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[cx - 0.003, cy - 0.005], [cx - 0.003, cy + 0.005]] }, properties: {} },
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[cx + 0.001, cy + 0.0035], [cx + 0.005, cy + 0.001]] }, properties: {} },
+            // Hebbal → Yeshwantpur → Rajajinagar corridor (N-S)
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.035], [77.5590, 12.9922], [77.5528, 12.9677]] }, properties: {} },
+            // Whitefield → Marathahalli → Koramangala (E)
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.7480, 12.9699], [77.6964, 12.9568], [77.6245, 12.9352]] }, properties: {} },
+            // Banashankari → Jayanagar → BTM (S)
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5470, 12.9255], [77.5831, 12.9299], [77.6151, 12.9131]] }, properties: {} },
+            // Yelahanka → Hebbal trunk main
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.1015], [77.5946, 13.035]] }, properties: {} },
+            // Electronic City feeder
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.6701, 12.8455], [77.6400, 12.8700], [77.6245, 12.9352]] }, properties: {} },
           ]
         }
-      }, [{ id: 'water-lines-layer', type: 'line', paint: { "line-color": "#3B82F6", "line-width": 3, "line-opacity": 0.85 } }]);
+      }, [{ id: 'water-lines-layer', type: 'line', paint: { "line-color": "#3B82F6", "line-width": 2.5, "line-opacity": 0.8 } }]);
 
-      // ── Power Grid
+      // ── Power Grid — approximate KPTCL 220 kV transmission corridors
       syncLayer('power-grid', !!activeLayers.powerGrid, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
           features: [
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[cx - 0.005, cy + 0.001], [cx + 0.005, cy + 0.001]] }, properties: {} },
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[cx + 0.002, cy - 0.004], [cx + 0.002, cy + 0.004]] }, properties: {} },
+            // N-S backbone: Hebbal → Silk Board
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.035], [77.5946, 12.9716], [77.6200, 12.9177]] }, properties: {} },
+            // E-W backbone: Rajajinagar → Whitefield
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5528, 12.9922], [77.5946, 12.9716], [77.6964, 12.9568], [77.7480, 12.9699]] }, properties: {} },
+            // SW spur: Banashankari → Electronic City
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5470, 12.9255], [77.6151, 12.9131], [77.6701, 12.8455]] }, properties: {} },
+            // NE spur: Hebbal → Yelahanka
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.035], [77.6064, 13.0600], [77.5946, 13.1015]] }, properties: {} },
           ]
         }
-      }, [{ id: 'power-grid-layer', type: 'line', paint: { "line-color": "#F59E0B", "line-width": 2.5, "line-opacity": 0.9 } }]);
+      }, [{ id: 'power-grid-layer', type: 'line', paint: { "line-color": "#F59E0B", "line-width": 2, "line-opacity": 0.85 } }]);
 
       // ── Tax Defaulters Heatmap (kept for legacy, but now using markers)
       syncLayer('tax-heat', false, {
@@ -271,8 +268,11 @@ export default function MapView() {
     let resourceIds: string[] = [];
 
     const cleanup = () => {
+      // Layers must be removed before their sources
       for (const id of resourceIds) {
         if (map.getLayer(id)) map.removeLayer(id);
+      }
+      for (const id of resourceIds) {
         if (map.getSource(id)) map.removeSource(id);
       }
       resourceIds = [];
@@ -305,7 +305,8 @@ export default function MapView() {
           "circle-stroke-width": 2,
         },
       });
-      resourceIds.push("draw-pts-src", "draw-pts-layer");
+      // Track layers first, sources second (cleanup removes layers then sources)
+      resourceIds.push("draw-pts-layer", "draw-pts-src");
 
       if (pts.length >= 2) {
         map.addSource("draw-line-src", {
@@ -326,7 +327,7 @@ export default function MapView() {
             "line-dasharray": [2, 2],
           },
         });
-        resourceIds.push("draw-line-src", "draw-line-layer");
+        resourceIds.push("draw-line-layer", "draw-line-src");
       }
     };
 
@@ -365,7 +366,8 @@ export default function MapView() {
         source: "draw-final-src",
         paint: { "line-color": "#00C896", "line-width": 3 },
       });
-      resourceIds = ["draw-final-src", "draw-final-fill", "draw-final-line"];
+      // Layers listed first so cleanup removes them before sources
+      resourceIds = ["draw-final-fill", "draw-final-line", "draw-final-src"];
 
       window.dispatchEvent(
         new CustomEvent("bhoomi:draw-complete", { detail: { polygon } })
@@ -423,7 +425,6 @@ export default function MapView() {
     markerRefs.current = [];
 
     if (!activeLayers.taxDefaulters || defaulterMarkers.length === 0) {
-      clearDefaulterMarkers();
       return;
     }
 
@@ -461,23 +462,49 @@ export default function MapView() {
     if (activeULPIN && mapRef.current) {
       const map = mapRef.current;
       const features = map.querySourceFeatures("parcels", {
-
         sourceLayer: "parcels_tile_view",
-
         filter: ["==", "ulpin", activeULPIN]
       });
 
       if (features.length > 0) {
+        // Compute centroid from the polygon vertices in the tile
         const geom = features[0].geometry as any;
         let coords: [number, number] | null = null;
-        if (geom.type === "Polygon") coords = geom.coordinates[0][0];
-        else if (geom.type === "MultiPolygon") coords = geom.coordinates[0][0][0];
-
+        if (geom.type === "Polygon") {
+          const ring = geom.coordinates[0] as [number, number][];
+          const lng = ring.reduce((s, c) => s + c[0], 0) / ring.length;
+          const lat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+          coords = [lng, lat];
+        } else if (geom.type === "MultiPolygon") {
+          const ring = geom.coordinates[0][0] as [number, number][];
+          const lng = ring.reduce((s, c) => s + c[0], 0) / ring.length;
+          const lat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+          coords = [lng, lat];
+        }
         if (coords) {
           map.flyTo({ center: coords, zoom: 19, essential: true });
         }
       } else {
-        map.flyTo({ center: BENGALURU_CENTER, zoom: 19, essential: true });
+        // Feature not in current viewport tiles — check defaulterMarkers then API
+        const marker = defaulterMarkers.find(m => m.ulpin === activeULPIN);
+        if (marker) {
+          map.flyTo({ center: marker.coordinates, zoom: 19, essential: true });
+        } else {
+          // API now returns ST_Centroid as a GeoJSON Point
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/parcels/${activeULPIN}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(parcel => {
+              if (parcel && parcel.geometry && parcel.geometry.type === "Point") {
+                const [lng, lat] = parcel.geometry.coordinates as [number, number];
+                map.flyTo({ center: [lng, lat], zoom: 19, essential: true });
+                return;
+              }
+              map.flyTo({ center: BENGALURU_CENTER, zoom: 14, essential: true });
+            })
+            .catch(() => {
+              map.flyTo({ center: BENGALURU_CENTER, zoom: 14, essential: true });
+            });
+        }
       }
     }
   }, [activeULPIN]);
