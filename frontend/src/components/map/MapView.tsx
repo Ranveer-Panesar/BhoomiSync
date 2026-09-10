@@ -43,11 +43,12 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
 };
 
 export default function MapView() {
-  const { activeLayers, activeULPIN, setActiveULPIN, setMapBBox } = useMapStore();
+  const { activeLayers, activeULPIN, setActiveULPIN, setMapBBox, defaulterMarkers, addDefaulterMarker, clearDefaulterMarkers } = useMapStore();
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [debugLog, setDebugLog] = useState<string>("Initializing map...");
   const [hoverInfo, setHoverInfo] = useState<any>(null);
+  const markerRefs = useRef<maplibregl.Marker[]>([]);
 
   // Initialize Map
   useEffect(() => {
@@ -228,23 +229,14 @@ export default function MapView() {
         }
       }, [{ id: 'power-grid-layer', type: 'line', paint: { "line-color": "#F59E0B", "line-width": 2.5, "line-opacity": 0.9 } }]);
 
-      // ── Tax Defaulters
-      syncLayer('tax-heat', !!activeLayers.taxDefaulters, {
+      // ── Tax Defaulters Heatmap (kept for legacy, but now using markers)
+      syncLayer('tax-heat', false, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: Array.from({ length: 15 }, () => ({
-            type: "Feature" as const,
-            geometry: { type: "Point" as const, coordinates: [cx + (Math.random() - 0.5) * 0.01, cy + (Math.random() - 0.5) * 0.008] },
-            properties: { w: Math.random() },
-          }))
+          features: []
         }
-      }, [{
-        id: 'tax-defaulters-heat', type: 'heatmap', paint: {
-          "heatmap-weight": ["get", "w"], "heatmap-intensity": 2, "heatmap-radius": 45, "heatmap-opacity": 0.75,
-          "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(239,68,68,0)", 0.5, "rgba(239,68,68,0.5)", 1, "rgba(239,68,68,1)"]
-        }
-      }]);
+      }, []);
 
       // ── Zoning Restrictions
       syncLayer('zoning', !!activeLayers.zoningRestrictions, {
@@ -420,6 +412,49 @@ export default function MapView() {
       cleanup();
     };
   }, []);
+
+  // Render defaulter markers when taxDefaulters layer is toggled
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    // Clear existing markers
+    markerRefs.current.forEach((marker) => marker.remove());
+    markerRefs.current = [];
+
+    if (!activeLayers.taxDefaulters || defaulterMarkers.length === 0) {
+      clearDefaulterMarkers();
+      return;
+    }
+
+    // Add markers for each defaulter
+    defaulterMarkers.forEach((markerData) => {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        width: 24px;
+        height: 24px;
+        background: #EF4444;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      el.title = `ULPIN: ${markerData.ulpin}\nOwner: ${markerData.owner_name || 'N/A'}\nDue: ₹${markerData.amount_due?.toFixed(2) || 'N/A'}`;
+      
+      el.addEventListener('click', () => {
+        setActiveULPIN(markerData.ulpin);
+      });
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat(markerData.coordinates)
+        .addTo(map);
+      
+      markerRefs.current.push(marker);
+    });
+  }, [activeLayers.taxDefaulters, defaulterMarkers]);
 
   // Handle active ULPIN flying
   useEffect(() => {

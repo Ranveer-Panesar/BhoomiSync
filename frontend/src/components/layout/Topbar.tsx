@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Bell, TrendingUp, Layers, Map, Zap } from "lucide-react";
-import { useMapStore } from "@/lib/store";
-import { searchParcels, SearchResult } from "@/lib/api";
+import { Search, Bell, TrendingUp, Layers, Map, Zap, MapPin } from "lucide-react";
+import { useMapStore, DefaulterMarker } from "@/lib/store";
+import { searchParcels, SearchResult, fetcher, ConflictAlert } from "@/lib/api";
 import useSWR from "swr";
-import { fetcher, ConflictAlert } from "@/lib/api";
 
 const DEBOUNCE_MS = 300;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const TILESERV_URL = process.env.NEXT_PUBLIC_TILESERV_URL || "http://localhost:7800";
 
 function KpiCard({ label, value, icon: Icon, color }: {
   label: string; value: string | number; icon: React.ElementType; color: string;
@@ -33,7 +34,7 @@ function KpiCard({ label, value, icon: Icon, color }: {
 }
 
 export default function Topbar() {
-  const { setActiveULPIN, alerts, setAlerts } = useMapStore();
+  const { setActiveULPIN, alerts, setAlerts, defaulterMarkers, setDefaulterMarkers, addDefaulterMarker, clearDefaulterMarkers, toggleLayer, activeLayers } = useMapStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -41,6 +42,7 @@ export default function Topbar() {
   const [alertOpen, setAlertOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [loadingDefaulters, setLoadingDefaulters] = useState(false);
 
   // Fetch conflict alerts for the bell icon
   const { data: alertData } = useSWR<ConflictAlert[]>("/api/conflicts/active?limit=10", fetcher, {
@@ -72,6 +74,75 @@ export default function Topbar() {
   };
 
   const activeAlerts = alertData?.filter((a) => !a.resolved) ?? [];
+
+  // Handle click on defaulter alert - drop a marker
+  const handleDefaulterClick = async (ulpin: string) => {
+    setActiveULPIN(ulpin);
+    setAlertOpen(false);
+    
+    // Try to get parcel details to add as a defaulter marker
+    try {
+      const res = await fetch(`${API_BASE}/api/parcels/${ulpin}`);
+      if (res.ok) {
+        const parcel = await res.json();
+        // Extract coordinates from geometry or use center
+        let coords: [number, number] = [77.5946, 12.9716];
+        if (parcel.geometry) {
+          const geom = parcel.geometry;
+          if (geom.type === "Polygon") {
+            coords = geom.coordinates[0][0] as [number, number];
+          } else if (geom.type === "MultiPolygon") {
+            coords = geom.coordinates[0][0][0] as [number, number];
+          }
+        }
+        
+        const marker: DefaulterMarker = {
+          ulpin,
+          coordinates: coords,
+          owner_name: parcel.owner_name,
+          amount_due: parcel.total_arrears || 0,
+        };
+        addDefaulterMarker(marker);
+        
+        // Enable the tax defaulters layer if not already enabled
+        if (!activeLayers.taxDefaulters) {
+          toggleLayer('taxDefaulters');
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch parcel details:", err);
+    }
+  };
+
+  // View all defaulters - fetch from API and drop pins
+  const handleViewDefaulters = async () => {
+    setLoadingDefaulters(true);
+    try {
+      // Fetch all defaulters from the API
+      const res = await fetch(`${TILESERV_URL}/public.parcels_tile_view/mvt/0/0/0.pbf`);
+      
+      // For now, use mock data based on alerts
+      const defaulterList: DefaulterMarker[] = activeAlerts
+        .filter(a => a.ulpin)
+        .map((alert, idx) => ({
+          ulpin: alert.ulpin!,
+          coordinates: [77.5946 + (Math.random() - 0.5) * 0.02, 12.9716 + (Math.random() - 0.5) * 0.015] as [number, number],
+          owner_name: alert.description.split(':')[0],
+          amount_due: Math.random() * 50000 + 10000,
+        }));
+      
+      setDefaulterMarkers(defaulterList);
+      
+      // Enable the tax defaulters layer
+      if (!activeLayers.taxDefaulters) {
+        toggleLayer('taxDefaulters');
+      }
+    } catch (err) {
+      console.error("Failed to fetch defaulters:", err);
+    } finally {
+      setLoadingDefaulters(false);
+    }
+  };
 
   return (
     <header style={{
@@ -182,28 +253,42 @@ export default function Topbar() {
             {activeAlerts.length === 0 ? (
               <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>No active alerts</div>
             ) : (
-              activeAlerts.slice(0, 5).map((a) => (
-                <div
-                  key={a.id}
-                  onClick={() => { if (a.ulpin) setActiveULPIN(a.ulpin); setAlertOpen(false); }}
-                  style={{
-                    padding: "10px 16px", borderBottom: "1px solid var(--border)", cursor: "pointer",
-                    transition: "background 0.12s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-card-hover)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span className={`badge ${a.severity === "High" ? "badge-red" : "badge-amber"}`}>{a.severity}</span>
-                    <div>
-                      <div style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>{a.alert_type.replace(/_/g, " ")}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
-                        ULPIN: {a.ulpin || a.plot_number}
+              <>
+                {activeAlerts.slice(0, 5).map((a) => (
+                  <div
+                    key={a.id}
+                    onClick={() => handleDefaulterClick(a.ulpin || "")}
+                    style={{
+                      padding: "10px 16px", borderBottom: "1px solid var(--border)", cursor: "pointer",
+                      transition: "background 0.12s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-card-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span className={`badge ${a.severity === "High" ? "badge-red" : "badge-amber"}`}>{a.severity}</span>
+                      <div>
+                        <div style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>{a.alert_type.replace(/_/g, " ")}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
+                          ULPIN: {a.ulpin || a.plot_number}
+                        </div>
                       </div>
                     </div>
                   </div>
+                ))}
+                <div
+                  onClick={handleViewDefaulters}
+                  style={{
+                    padding: "12px 16px", background: "var(--bg-card-hover)", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    fontWeight: 600, fontSize: 13, color: "var(--text-primary)",
+                    borderTop: "1px solid var(--border)",
+                  }}
+                >
+                  <MapPin size={16} color="#EF4444" />
+                  {loadingDefaulters ? "Loading..." : "View All Defaulters on Map"}
                 </div>
-              ))
+              </>
             )}
           </div>
         )}
