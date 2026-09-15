@@ -10,7 +10,7 @@ if (typeof window !== 'undefined') {
   maplibregl.setWorkerUrl('https://unpkg.com/maplibre-gl@6.9.0/dist/maplibre-gl-worker.mjs');
 }
 
-const BENGALURU_CENTER: [number, number] = [77.5946, 12.9716];
+const MOHALI_CENTER: [number, number] = [76.7179, 30.7046];
 const TILESERV_URL = process.env.NEXT_PUBLIC_TILESERV_URL || "http://localhost:7800";
 
 const LAND_USE_COLORS: Record<string, string> = {
@@ -60,7 +60,7 @@ export default function MapView() {
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: MAP_STYLE,
-      center: BENGALURU_CENTER,
+      center: MOHALI_CENTER,
       zoom: 12,
     });
 

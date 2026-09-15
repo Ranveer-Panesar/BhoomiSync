@@ -4,12 +4,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 
 export const metadata: Metadata = {
-  title: "BhoomiSync — Land Stack | Unified GIS Land Record Platform",
+  title: "SUTRA — System for Unified Tracking of land Resource and Assets",
   description:
-    "SIH26014 — Department of Land Resources, Government of India. " +
+    "SIH2026 — Department of Land Resources, Government of India. " +
     "Unified GIS-based Digital Public Infrastructure platform linking all " +
-    "departmental land data via ULPIN (Bhu-Aadhaar).",
-  keywords: ["GIS", "land records", "ULPIN", "Bhu-Aadhaar", "BhoomiSync", "cadastral"],
+    "departmental land data via ULPIN (Bhu-Aadhaar) for Mohali Municipal Area.",
+  keywords: ["GIS", "land records", "ULPIN", "Bhu-Aadhaar", "SUTRA", "cadastral", "Mohali"],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -21,7 +21,7 @@ export default function AnalyticsPage() {
           Data Analytics
         </h1>
         <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          City-wide aggregated land record and revenue metrics — Bengaluru Urban District
+          City-wide aggregated land record and revenue metrics — Mohali Municipal Area
         </p>
       </div>
 

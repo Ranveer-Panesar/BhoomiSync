@@ -86,7 +86,7 @@ export default function Topbar() {
       if (res.ok) {
         const parcel = await res.json();
         // Extract coordinates from geometry or use center
-        let coords: [number, number] = [77.5946, 12.9716];
+        let coords: [number, number] = [76.7179, 30.7046]; // Mohali center
         if (parcel.geometry) {
           const geom = parcel.geometry;
           if (geom.type === "Polygon") {
@@ -199,10 +199,10 @@ export default function Topbar() {
 
       {/* KPI Cards */}
       <div style={{ display: "flex", gap: 8, flex: 1, overflow: "hidden" }}>
-        <KpiCard label="Registered ULPINs" value="30" icon={Map} color="#00C896" />
+        <KpiCard label="Registered ULPINs" value="30" icon={Map} color="#0284C7" />
         <KpiCard label="Active Alerts" value={activeAlerts.length} icon={Zap} color="#EF4444" />
-        <KpiCard label="Tax Collection" value="76.4%" icon={TrendingUp} color="#F59E0B" />
-        <KpiCard label="Active Utilities" value="58" icon={Layers} color="#2563EB" />
+        <KpiCard label="Tax Collection" value="76.4%" icon={TrendingUp} color="#D97706" />
+        <KpiCard label="Active Utilities" value="58" icon={Layers} color="#0F766E" />
       </div>
 
       {/* Alert Bell */}

@@ -57,11 +57,12 @@ export default function Sidebar() {
             <Layers size={16} color="#fff" />
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", lineHeight: 1.2 }}>
-              BhoomiSync
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)", lineHeight: 1.2 }}
+              title="System for Unified Tracking of land Resource and Assets">
+              SUTRA
             </div>
             <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 500 }}>
-              Land Stack · SIH26014
+              Mohali Municipal Area
             </div>
           </div>
         </div>
@@ -93,7 +94,7 @@ export default function Sidebar() {
           </span>
         </div>
         <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-          v1.0.0 · Secure GIS Platform
+          SUTRA v1.0 · SIH2026
         </div>
       </div>
     </aside>
