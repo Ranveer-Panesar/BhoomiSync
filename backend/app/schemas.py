@@ -184,3 +184,58 @@ class RevenueResponse(BaseModel):
     total_due:      float
     total_collected: float
     overall_pct:    float
+
+
+# ─── Complaints ────────────────────────────────────────────────────────────────
+
+class ComplaintReplyOut(OrmBase):
+    id:          UUID
+    message:     str
+    date:        str
+    sender:      str
+
+
+class ComplaintListItem(OrmBase):
+    id:          UUID
+    ulpin:       Optional[str] = None
+    complainant: str
+    location:    str
+    subject:     str
+    date:        str
+    status:      str
+    department:  str
+
+
+class ComplaintOut(OrmBase):
+    id:          UUID
+    ulpin:       Optional[str] = None
+    complainant: str
+    location:    str
+    subject:     str
+    description: str
+    date:        str
+    status:      str
+    department:  str
+    photo_url:   Optional[str] = None
+    replies:     list[ComplaintReplyOut] = []
+
+
+class AssignRequest(BaseModel):
+    department: str
+
+
+class ReplyRequest(BaseModel):
+    message: str
+    sender:  Optional[str] = None
+
+
+# ─── Public Facilities ────────────────────────────────────────────────────────
+
+class PublicFacilityOut(OrmBase):
+    id:            UUID
+    facility_type: str
+    name:          str
+    locality:      str
+    capacity:      Optional[str] = None
+    status:        str
+    city:          str

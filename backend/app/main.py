@@ -1,5 +1,5 @@
 """
-FastAPI application entrypoint for BhoomiSync / Land Stack.
+FastAPI application entrypoint for SUTRA / Land Stack.
 Mounts all routers, configures CORS, and runs the Conflict Detection
 engine as a background task on startup.
 """
@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import parcels, analytics, conflicts
+from .routers import parcels, analytics, conflicts, complaints
 
 
 @asynccontextmanager
@@ -25,8 +25,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="BhoomiSync — Land Stack API",
-    description="Unified GIS-based Digital Public Infrastructure for Land Records (SIH26014)",
+    title="SUTRA — Land Stack API",
+    description="Unified GIS-based Digital Public Infrastructure for Land Records (SIH2026)",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -42,11 +42,12 @@ app.add_middleware(
 )
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
-app.include_router(parcels.router,   prefix="/api", tags=["Parcels"])
-app.include_router(analytics.router, prefix="/api", tags=["Analytics"])
-app.include_router(conflicts.router, prefix="/api", tags=["Conflicts"])
+app.include_router(parcels.router,    prefix="/api", tags=["Parcels"])
+app.include_router(analytics.router,  prefix="/api", tags=["Analytics"])
+app.include_router(conflicts.router,  prefix="/api", tags=["Conflicts"])
+app.include_router(complaints.router, prefix="/api", tags=["Complaints"])
 
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    return {"status": "ok", "service": "bhoomisync-api"}
+    return {"status": "ok", "service": "sutra-api"}

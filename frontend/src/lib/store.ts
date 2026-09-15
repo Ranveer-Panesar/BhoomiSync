@@ -1,5 +1,5 @@
 /**
- * Global Zustand store for BhoomiSync.
+ * Global Zustand store for SUTRA.
  *
  * Design: one flat store with selectors to prevent over-rendering.
  * Components subscribe only to the slice they need.

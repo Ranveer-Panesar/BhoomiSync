@@ -1,5 +1,5 @@
 """
-SQLAlchemy ORM models for BhoomiSync / Land Stack.
+SQLAlchemy ORM models for SUTRA / Land Stack.
 All spatial columns use GeoAlchemy2 Geometry type with SRID=4326.
 """
 
@@ -132,3 +132,50 @@ class ConflictAlert(Base):
     resolved_at = Column(DateTime, nullable=True)
 
     parcel = relationship("Parcel", back_populates="conflict_alerts")
+
+
+class Complaint(Base):
+    """Citizen complaints submitted through the SUTRA service network."""
+    __tablename__ = "complaints"
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ulpin        = Column(String(14), nullable=True, index=True)  # linked parcel (optional)
+    complainant  = Column(String(200), nullable=False)
+    location     = Column(String(300), nullable=False)
+    subject      = Column(String(300), nullable=False)
+    description  = Column(Text, nullable=False)
+    date         = Column(String(20), nullable=False)  # display format dd/mm/yyyy
+    status       = Column(String(30), nullable=False, default="Open")  # Open | Assigned | Resolved
+    department   = Column(String(100), default="Not Assigned")
+    photo_url    = Column(Text, nullable=True)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+    replies = relationship("ComplaintReply", back_populates="complaint", cascade="all, delete-orphan")
+
+
+class ComplaintReply(Base):
+    """Official replies to a citizen complaint."""
+    __tablename__ = "complaint_replies"
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    complaint_id = Column(UUID(as_uuid=True), ForeignKey("complaints.id"), nullable=False, index=True)
+    message      = Column(Text, nullable=False)
+    date         = Column(String(20), nullable=False)
+    sender       = Column(String(200), nullable=False, default="SUTRA Municipal Administration")
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+    complaint = relationship("Complaint", back_populates="replies")
+
+
+class PublicFacility(Base):
+    """Public service buildings: schools, hospitals, etc."""
+    __tablename__ = "public_facilities"
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    facility_type = Column(String(50), nullable=False, index=True)  # 'School' | 'Hospital'
+    name         = Column(String(300), nullable=False)
+    locality     = Column(String(200), nullable=False)
+    capacity     = Column(String(100))       # e.g. '1,240 students' or '350 beds'
+    status       = Column(String(50), default="Operational")
+    city         = Column(String(100), default="Mohali")
+    created_at   = Column(DateTime, default=datetime.utcnow)

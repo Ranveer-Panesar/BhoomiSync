@@ -7,8 +7,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models import Owner, Parcel, TaxRecord
-from ..schemas import CityOverviewResponse, RevenueMetric, RevenueResponse
+from ..models import Owner, Parcel, TaxRecord, PublicFacility
+from ..schemas import CityOverviewResponse, RevenueMetric, RevenueResponse, PublicFacilityOut
 
 router = APIRouter()
 
@@ -171,3 +171,39 @@ async def get_defaulters(
             "coordinates": [float(r["lng"]), float(r["lat"])],
         })
     return result
+
+
+# ─── Public Facilities ────────────────────────────────────────────────────────
+
+DEMO_FACILITIES = [
+    {"facility_type": "School", "name": "Government Senior Secondary School", "locality": "Sector 68", "capacity": "1,240 students", "city": "Mohali"},
+    {"facility_type": "School", "name": "Government Model School", "locality": "Sector 70", "capacity": "980 students", "city": "Mohali"},
+    {"facility_type": "School", "name": "Primary School Phase 5", "locality": "Phase 5", "capacity": "620 students", "city": "Mohali"},
+    {"facility_type": "Hospital", "name": "Civil Hospital Mohali", "locality": "Phase 6", "capacity": "350 beds", "city": "Mohali"},
+    {"facility_type": "Hospital", "name": "Community Health Centre", "locality": "Sector 69", "capacity": "120 beds", "city": "Mohali"},
+    {"facility_type": "Hospital", "name": "Urban Primary Health Centre", "locality": "Sector 67", "capacity": "50 beds", "city": "Mohali"},
+]
+
+
+async def seed_facilities(db: AsyncSession):
+    result = await db.execute(select(PublicFacility).limit(1))
+    if result.scalar_one_or_none():
+        return
+    import uuid as _uuid
+    for data in DEMO_FACILITIES:
+        db.add(PublicFacility(id=_uuid.uuid4(), **data))
+    await db.commit()
+
+
+@router.get("/analytics/facilities", response_model=list[PublicFacilityOut])
+async def get_facilities(
+    facility_type: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return public service buildings (schools, hospitals) seeded for Mohali."""
+    await seed_facilities(db)
+    stmt = select(PublicFacility)
+    if facility_type:
+        stmt = stmt.where(PublicFacility.facility_type == facility_type)
+    result = await db.execute(stmt)
+    return [PublicFacilityOut.model_validate(f) for f in result.scalars().all()]
