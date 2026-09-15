@@ -1669,8 +1669,6 @@ stats.json
 
 # TypeScript
 *.tsbuildinfo
-*.tsx
-*.ts
 
 # Next.js
 .next/
